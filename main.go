@@ -34,7 +34,30 @@ func eventHandler(client *whatsmeow.Client) whatsmeow.EventHandler {
 
 			// Run in a goroutine to stay agile and not block the event loop
 			go func() {
-				fmt.Printf("Message received from %s (Chat: %s): %s\n", v.Info.Sender.String(), v.Info.Chat.String(), v.Message.GetConversation())
+				// Determine the message text from various possible sources
+				var msgText string
+				if v.Message.Conversation != nil {
+					msgText = v.Message.GetConversation()
+				} else if v.Message.ExtendedTextMessage != nil {
+					msgText = v.Message.GetExtendedTextMessage().GetText()
+					// Fallback to MatchedText if Text is empty (common in some link previews)
+					if msgText == "" {
+						msgText = v.Message.GetExtendedTextMessage().GetMatchedText()
+					}
+				} else if v.Message.ImageMessage != nil {
+					msgText = v.Message.GetImageMessage().GetCaption()
+				} else if v.Message.VideoMessage != nil {
+					msgText = v.Message.GetVideoMessage().GetCaption()
+				} else if v.Message.DocumentMessage != nil {
+					msgText = v.Message.GetDocumentMessage().GetCaption()
+				}
+
+				// If it's still empty, log the full structure for deep inspection
+				if msgText == "" {
+					fmt.Printf("Warning: Empty text. Full message structure: %+v\n", v.Message)
+				}
+
+				fmt.Printf("Message received from %s (Chat: %s): %s\n", v.Info.Sender.String(), v.Info.Chat.String(), msgText)
 
 				// Show "typing..." animation
 				_ = client.SendChatPresence(context.Background(), v.Info.Chat, types.ChatPresenceComposing, types.ChatPresenceMediaText)
@@ -43,10 +66,21 @@ func eventHandler(client *whatsmeow.Client) whatsmeow.EventHandler {
 				time.Sleep(1 * time.Second)
 
 				// Determine response text
-				msgText := v.Message.GetConversation()
 				responseText := "oi"
-				if strings.Contains(msgText, "https://www.instagram.com/reel/") {
-					responseText = "reels"
+				msgLower := strings.ToLower(msgText)
+
+				// If it's an ExtendedTextMessage, search for the link in other metadata fields as well
+				if v.Message.ExtendedTextMessage != nil {
+					ext := v.Message.GetExtendedTextMessage()
+					msgLower += " " + strings.ToLower(ext.GetMatchedText())
+					msgLower += " " + strings.ToLower(ext.GetDescription())
+					msgLower += " " + strings.ToLower(ext.GetTitle())
+				}
+
+				if strings.Contains(msgLower, "instagram.com/reel/") || 
+				   strings.Contains(msgLower, "instagram.com/reels/") || 
+				   strings.Contains(msgLower, "instagram.com/p/") {
+					responseText = "reels: " + msgText
 				}
 
 				// Prepare the response message
