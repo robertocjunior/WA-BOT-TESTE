@@ -1,51 +1,54 @@
-# WhatsApp Bot em Go
+# WhatsApp Bot Pro - Instagram Downloader
 
-Este é um bot simples de WhatsApp construído em Go usando a biblioteca `whatsmeow`. O bot exibe um QR code no terminal para autenticação e responde com "oi" a qualquer mensagem recebida.
+Este projeto é um bot de WhatsApp profissional desenvolvido em Go, focado em detectar links do Instagram e realizar o download automático de vídeos para envio direto no chat.
 
-## Funcionalidades
+## 🚀 Funcionalidades
 
-- Exibição de QR Code no terminal para login via WhatsApp Web.
-- Persistência de sessão usando SQLite.
-- Resposta automática inteligente:
-    - Responde com `reels: <link>` ao detectar links de Instagram (Reels ou Posts), extraindo a URL inclusive de metadados de prévia.
-    - Suporta variações como `reel/`, `reels/` e `p/`, de forma insensível a maiúsculas.
-    - Responde com "oi" para outras mensagens de texto.
-- Animação de "digitando" (`composing`) para uma interação mais humana.
-- Processamento assíncrono de mensagens para maior agilidade.
-- Registro de logs detalhados para depuração.
+- **Download Automático**: Detecta links de Reels e Posts do Instagram e envia o vídeo diretamente.
+- **Feedback em Tempo Real**: Notifica o usuário quando o download começa e exibe mensagens de erro claras.
+- **Estrutura Modular**: Organizado seguindo padrões profissionais de Go (`cmd/` e `internal/`), facilitando a manutenção e expansão.
+- **Persistência de Sessão**: Utiliza SQLite para manter a conexão ativa sem precisar escanear o QR Code a cada reinício.
+- **Assíncrono**: Processamento de mensagens em goroutines para alta performance.
 
-## Pré-requisitos
+## 📁 Estrutura do Projeto
 
-- [Go](https://golang.org/dl/) (versão 1.25 ou superior recomendada).
-- GCC (necessário para o driver SQLite `go-sqlite3`).
+A arquitetura do projeto foi desenhada para ser escalável:
 
-## Como Executar
+```text
+├── cmd/
+│   └── bot/             # Ponto de entrada (main.go)
+├── internal/
+│   ├── whatsapp/        # Biblioteca interna para gestão do cliente WhatsApp
+│   ├── handlers/        # Processamento de lógica de mensagens e eventos
+│   └── instagram/       # Lógica de negócio específica para download do Instagram
+├── go.mod               # Dependências do projeto
+└── .gitignore           # Proteção contra arquivos binários e bancos de dados
+```
 
-1. Clone o repositório (ou acesse o diretório do projeto).
+## 🛠️ Como Executar
+
+### Pré-requisitos
+- [Go](https://golang.org/dl/) (v1.25+)
+- GCC (necessário para o SQLite)
+
+### Instalação e Execução
+1. Clone o repositório.
 2. Instale as dependências:
    ```bash
    go mod tidy
    ```
-3. Execute a aplicação:
+3. Execute o bot:
    ```bash
-   go run main.go
+   go run cmd/bot/main.go
    ```
-4. Escaneie o QR code que aparecerá no terminal com o seu aplicativo do WhatsApp (Configurações > Aparelhos conectados > Conectar um aparelho).
+4. Escaneie o QR Code exibido no terminal com o seu WhatsApp.
 
-## Estrutura do Projeto
+## 📦 Tecnologias Utilizadas
 
-- `main.go`: Contém a lógica principal da aplicação, incluindo conexão, tratamento de eventos e resposta automática.
-- `go.mod` e `go.sum`: Gerenciamento de dependências.
-- `examplestore.db`: Arquivo SQLite gerado automaticamente para armazenar os dados da sessão.
+- [Whatsmeow](https://go.mau.fi/whatsmeow): Biblioteca de WhatsApp para Go.
+- [SQLite](https://modernc.org/sqlite): Banco de dados leve para sessões.
+- [QRTerminal](https://github.com/mdp/qrterminal): Exibição de QR Code no console.
 
-## Boas Práticas
+## 📝 Licença
 
-Este projeto segue princípios de desenvolvimento ágil:
-- **Simplicidade**: Foca na funcionalidade principal solicitada.
-- **Documentação**: Código comentado e README claro.
-- **Responsabilidade Única**: Funções modulares para tratamento de eventos.
-- **Tratamento de Erros**: Verificação básica de erros em operações críticas.
-
-## Licença
-
-Este projeto está licenciado sob a licença MIT.
+Este projeto está sob a licença MIT.
