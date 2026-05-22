@@ -30,9 +30,28 @@ func ExtractURL(text string) string {
 }
 
 // FetchVideo calls the external API to get the download link and then downloads the video data.
+// It tries up to 3 times before returning an error.
 func FetchVideo(instaURL string) ([]byte, error) {
-	log.Info().Str("url", instaURL).Msg("Starting Instagram video fetch")
+	var lastErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		log.Info().Str("url", instaURL).Int("attempt", attempt).Msg("Starting Instagram video fetch")
 
+		videoData, err := fetchVideoOnce(instaURL)
+		if err == nil {
+			return videoData, nil
+		}
+
+		lastErr = err
+		log.Warn().Err(err).Int("attempt", attempt).Msg("Attempt failed")
+		if attempt < 3 {
+			time.Sleep(2 * time.Second) // Wait a bit before retrying
+		}
+	}
+
+	return nil, fmt.Errorf("failed after 3 attempts: %w", lastErr)
+}
+
+func fetchVideoOnce(instaURL string) ([]byte, error) {
 	apiReq := APIRequest{URL: instaURL}
 	jsonData, err := json.Marshal(apiReq)
 	if err != nil {

@@ -13,7 +13,23 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
+	"math/rand"
 )
+
+var funnyErrorMessages = []string{
+	"❌ O rato roeu o fio da internet e o vídeo sumiu! 🐭🔌",
+	"❌ Derrubei o servidor (literalmente)... me ajuda a levantar! 🤖💥",
+	"❌ Eita! O estagiário tropeçou no cabo de rede de novo... 🔌",
+	"❌ Parece que o Instagram tá fazendo greve hoje. 🪧",
+	"❌ O servidor saiu pra tomar um café e ainda não voltou. ☕",
+	"❌ Um alienígena abduziu o seu vídeo no meio do caminho! 👽",
+	"❌ O vídeo era tão pesado que o bot não aguentou e foi descansar. 😴",
+	"❌ Houston, temos um problema! O vídeo se perdeu no espaço. 🚀",
+}
+
+func getFunnyErrorMessage() string {
+	return funnyErrorMessages[rand.Intn(len(funnyErrorMessages))]
+}
 
 // Register returns the main event handler for the WhatsApp client.
 func Register(client *whatsmeow.Client) whatsmeow.EventHandler {
@@ -75,7 +91,7 @@ func Register(client *whatsmeow.Client) whatsmeow.EventHandler {
 					if err != nil {
 						log.Error().Err(err).Str("url", instaURL).Msg("Failed to process Instagram link")
 						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
-							Conversation: proto.String("❌ Erro ao processar o link do Instagram."),
+							Conversation: proto.String(getFunnyErrorMessage()),
 						})
 						return
 					}
@@ -85,7 +101,7 @@ func Register(client *whatsmeow.Client) whatsmeow.EventHandler {
 					if err != nil {
 						log.Error().Err(err).Msg("Failed to upload video to WhatsApp")
 						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
-							Conversation: proto.String("❌ Erro ao enviar o vídeo para o WhatsApp."),
+							Conversation: proto.String(getFunnyErrorMessage()),
 						})
 						return
 					}
