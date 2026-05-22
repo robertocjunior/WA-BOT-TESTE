@@ -7,6 +7,7 @@ import (
 
 	_ "modernc.org/sqlite"
 	"github.com/mdp/qrterminal/v3"
+	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -15,7 +16,9 @@ import (
 // InitClient initializes the database, connects to WhatsApp, and returns the client.
 func InitClient() (*whatsmeow.Client, error) {
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
-	dbParams := "examplestore.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	// Create data directory if it doesn't exist
+	_ = os.MkdirAll("data", 0755)
+	dbParams := "data/examplestore.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
 	container, err := sqlstore.New(context.Background(), "sqlite", dbParams, dbLog)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -38,9 +41,9 @@ func InitClient() (*whatsmeow.Client, error) {
 		for evt := range qrChan {
 			if evt.Event == "code" {
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
-				fmt.Println("QR code generated. Please scan it with your WhatsApp app.")
+				log.Info().Msg("QR code generated. Please scan it with your WhatsApp app.")
 			} else {
-				fmt.Println("QR channel event:", evt.Event)
+				log.Debug().Str("event", evt.Event).Msg("QR channel event")
 			}
 		}
 	} else {
@@ -48,7 +51,7 @@ func InitClient() (*whatsmeow.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect: %w", err)
 		}
-		fmt.Println("Successfully connected to WhatsApp.")
+		log.Info().Msg("Successfully connected to WhatsApp.")
 	}
 
 	return client, nil

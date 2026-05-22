@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type APIRequest struct {
@@ -28,6 +31,8 @@ func ExtractURL(text string) string {
 
 // FetchVideo calls the external API to get the download link and then downloads the video data.
 func FetchVideo(instaURL string) ([]byte, error) {
+	log.Info().Str("url", instaURL).Msg("Starting Instagram video fetch")
+
 	apiReq := APIRequest{URL: instaURL}
 	jsonData, err := json.Marshal(apiReq)
 	if err != nil {
@@ -37,7 +42,10 @@ func FetchVideo(instaURL string) ([]byte, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	httpClient := &http.Client{Transport: tr}
+	httpClient := &http.Client{
+		Transport: tr,
+		Timeout:   45 * time.Second, // Robust timeout for 24/7 operation
+	}
 
 	req, err := http.NewRequest("POST", "https://api.int.rbcj.com.br/", strings.NewReader(string(jsonData)))
 	if err != nil {
@@ -61,6 +69,8 @@ func FetchVideo(instaURL string) ([]byte, error) {
 		return nil, fmt.Errorf("API did not return a URL: %+v", apiResp)
 	}
 
+	log.Debug().Str("video_url", apiResp.URL).Msg("Downloading video from API response")
+
 	// 2. Download the video
 	videoResp, err := httpClient.Get(apiResp.URL)
 	if err != nil {
@@ -73,5 +83,6 @@ func FetchVideo(instaURL string) ([]byte, error) {
 		return nil, fmt.Errorf("error reading video data: %w", err)
 	}
 
+	log.Info().Int("bytes", len(videoData)).Msg("Successfully downloaded Instagram video")
 	return videoData, nil
 }

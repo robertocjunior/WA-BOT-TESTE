@@ -27,24 +27,32 @@ A arquitetura do projeto foi desenhada para ser escalável:
 
 ## 🛠️ Como Executar
 
-### Pré-requisitos
-- [Go](https://golang.org/dl/) (v1.25+)
-- GCC (necessário para o SQLite)
+### Opção 1: Nativo (Go)
+1. Instale as dependências: `go mod tidy`
+2. Execute: `go run cmd/bot/main.go`
 
-### Instalação e Execução
-1. Clone o repositório.
-2. Instale as dependências:
+### Opção 2: Docker (Recomendado para 24/7)
+1. Construa a imagem:
    ```bash
-   go mod tidy
+   docker build -t wa-bot .
    ```
-3. Execute o bot:
+2. Inicie o container com persistência:
    ```bash
-   go run cmd/bot/main.go
+   docker run -d \
+     --name wa-bot-inst \
+     --restart unless-stopped \
+     -v $(pwd)/data:/app/data \
+     wa-bot
    ```
-4. Escaneie o QR Code exibido no terminal com o seu WhatsApp.
+
+## 🛡️ Resiliência (24/7)
+- **Panic Recovery**: O bot recupera-se automaticamente de falhas inesperadas no processamento de mensagens.
+- **Structured Logging**: Logs profissionais com `zerolog`.
+- **Auto-Reconnect**: Gestão inteligente de conexão com o WhatsApp.
+- **Timeouts**: Proteção contra APIs externas lentas.
 
 ## 📦 Tecnologias Utilizadas
-
+...
 - [Whatsmeow](https://go.mau.fi/whatsmeow): Biblioteca de WhatsApp para Go.
 - [SQLite](https://modernc.org/sqlite): Banco de dados leve para sessões.
 - [QRTerminal](https://github.com/mdp/qrterminal): Exibição de QR Code no console.

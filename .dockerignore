@@ -1,0 +1,6 @@
+.git
+bot
+examplestore.db*
+data/
+Dockerfile
+.dockerignore
