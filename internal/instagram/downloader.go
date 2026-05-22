@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -66,7 +67,12 @@ func fetchVideoOnce(instaURL string) ([]byte, error) {
 		Timeout:   45 * time.Second, // Robust timeout for 24/7 operation
 	}
 
-	req, err := http.NewRequest("POST", "https://api.int.rbcj.com.br/", strings.NewReader(string(jsonData)))
+	apiURL := os.Getenv("INSTAGRAM_API_URL")
+	if apiURL == "" {
+		return nil, fmt.Errorf("INSTAGRAM_API_URL environment variable is not set")
+	}
+
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader(string(jsonData)))
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}

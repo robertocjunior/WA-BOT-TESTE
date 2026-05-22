@@ -1,0 +1,11 @@
+services:
+  wa-bot:
+    image: ghcr.io/robertocjunior/wa-bot-teste:latest
+    container_name: wa-bot-inst
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/Sao_Paulo
+      - INSTAGRAM_API_URL=https://sua-api.com.br/ # Informe o endereço da API aqui

@@ -46,6 +46,7 @@ services:
     environment:
       - LOG_LEVEL=info
       - TZ=America/Sao_Paulo
+      - INSTAGRAM_API_URL=https://sua-api.com.br/
 ```
 
 2. Suba o serviço:
