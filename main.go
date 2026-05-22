@@ -3,14 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
+	"crypto/tls"
+	"encoding/json"
+	"io"
+	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -20,6 +25,21 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 )
+
+type APIRequest struct {
+	URL string `json:"url"`
+}
+
+type APIResponse struct {
+	Status   string `json:"status"`
+	URL      string `json:"url"`
+	Filename string `json:"filename"`
+}
+
+func extractInstagramURL(text string) string {
+	re := regexp.MustCompile(`(?i)https?://(www\.)?instagram\.com/(reel|reels|p)/[a-zA-Z0-9_-]+`)
+	return re.FindString(text)
+}
 
 // eventHandler handles incoming events from the WhatsApp client.
 // Specifically, it listens for message events and responds with "oi".
@@ -59,6 +79,116 @@ func eventHandler(client *whatsmeow.Client) whatsmeow.EventHandler {
 
 				fmt.Printf("Message received from %s (Chat: %s): %s\n", v.Info.Sender.String(), v.Info.Chat.String(), msgText)
 
+				instaURL := extractInstagramURL(msgText)
+				if instaURL != "" {
+					// Send feedback: "Downloading..."
+					_ = client.SendChatPresence(context.Background(), v.Info.Chat, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+					_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+						Conversation: proto.String("⏳ Baixando vídeo..."),
+					})
+
+					defer func() {
+						// Stop "typing..." animation
+						_ = client.SendChatPresence(context.Background(), v.Info.Chat, types.ChatPresencePaused, types.ChatPresenceMediaText)
+					}()
+
+					// 1. Call the API to get download link
+					apiReq := APIRequest{URL: instaURL}
+					jsonData, _ := json.Marshal(apiReq)
+
+					tr := &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					}
+					httpClient := &http.Client{Transport: tr}
+
+					req, err := http.NewRequest("POST", "https://api.int.rbcj.com.br/", strings.NewReader(string(jsonData)))
+					if err != nil {
+						fmt.Printf("Error creating request: %v\n", err)
+						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+							Conversation: proto.String("❌ Erro ao processar o link."),
+						})
+						return
+					}
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Accept", "application/json")
+
+					resp, err := httpClient.Do(req)
+					if err != nil {
+						fmt.Printf("Error calling API: %v\n", err)
+						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+							Conversation: proto.String("❌ Erro ao conectar com o servidor de download."),
+						})
+						return
+					}
+					defer resp.Body.Close()
+
+					var apiResp APIResponse
+					if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+						fmt.Printf("Error decoding API response: %v\n", err)
+						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+							Conversation: proto.String("❌ Resposta inválida do servidor."),
+						})
+						return
+					}
+
+					if apiResp.URL == "" {
+						fmt.Printf("API did not return a URL. Response: %+v\n", apiResp)
+						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+							Conversation: proto.String("❌ Não foi possível obter o vídeo desse link."),
+						})
+						return
+					}
+
+					// 2. Download the video
+					videoResp, err := httpClient.Get(apiResp.URL)
+					if err != nil {
+						fmt.Printf("Error downloading video: %v\n", err)
+						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+							Conversation: proto.String("❌ Erro ao baixar o vídeo do servidor."),
+						})
+						return
+					}
+					defer videoResp.Body.Close()
+
+					videoData, err := io.ReadAll(videoResp.Body)
+					if err != nil {
+						fmt.Printf("Error reading video data: %v\n", err)
+						return
+					}
+
+					// 3. Upload to WhatsApp
+					uploadResp, err := client.Upload(context.Background(), videoData, whatsmeow.MediaVideo)
+					if err != nil {
+						fmt.Printf("Error uploading video to WhatsApp: %v\n", err)
+						_, _ = client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{
+							Conversation: proto.String("❌ Erro ao enviar o vídeo para o WhatsApp."),
+						})
+						return
+					}
+
+					// 4. Send video message
+					videoMsg := &waE2E.VideoMessage{
+						URL:           proto.String(uploadResp.URL),
+						DirectPath:    proto.String(uploadResp.DirectPath),
+						MediaKey:      uploadResp.MediaKey,
+						Mimetype:      proto.String("video/mp4"),
+						FileEncSHA256: uploadResp.FileEncSHA256,
+						FileSHA256:    uploadResp.FileSHA256,
+						FileLength:    proto.Uint64(uint64(len(videoData))),
+					}
+
+					response := &waE2E.Message{
+						VideoMessage: videoMsg,
+					}
+
+					_, err = client.SendMessage(context.Background(), v.Info.Chat, response)
+					if err != nil {
+						fmt.Printf("Error sending video to %s: %v\n", v.Info.Chat.String(), err)
+					}
+					return
+				}
+
+				// If it's not an Instagram link, keep the old logic (respond with "oi")
 				// Show "typing..." animation
 				_ = client.SendChatPresence(context.Background(), v.Info.Chat, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 				
@@ -107,7 +237,10 @@ func main() {
 	// Setup logging
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
 	// Setup the SQLite database for session storage
-	container, err := sqlstore.New(context.Background(), "sqlite3", "file:examplestore.db?_foreign_keys=on", dbLog)
+	// ModernC sqlite needs foreign keys enabled.
+	// Adding _pragma=journal_mode(WAL) and _pragma=busy_timeout(5000) to avoid "database is locked" errors.
+	dbParams := "examplestore.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	container, err := sqlstore.New(context.Background(), "sqlite", dbParams, dbLog)
 	if err != nil {
 		panic(err)
 	}
