@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"time"
@@ -41,9 +42,16 @@ func eventHandler(client *whatsmeow.Client) whatsmeow.EventHandler {
 				// Small delay to make the typing animation visible (and feel more natural)
 				time.Sleep(1 * time.Second)
 
+				// Determine response text
+				msgText := v.Message.GetConversation()
+				responseText := "oi"
+				if strings.Contains(msgText, "https://www.instagram.com/reel/") {
+					responseText = "reels"
+				}
+
 				// Prepare the response message
 				response := &waE2E.Message{
-					Conversation: proto.String("oi"),
+					Conversation: proto.String(responseText),
 				}
 
 				// Send the response back to the chat
@@ -51,7 +59,7 @@ func eventHandler(client *whatsmeow.Client) whatsmeow.EventHandler {
 				if err != nil {
 					fmt.Printf("Error sending message to %s: %v\n", v.Info.Chat.String(), err)
 				} else {
-					fmt.Printf("Responded to %s with 'oi'\n", v.Info.Chat.String())
+					fmt.Printf("Responded to %s with '%s'\n", v.Info.Chat.String(), responseText)
 				}
 
 				// Stop "typing..." animation

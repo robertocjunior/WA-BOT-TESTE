@@ -6,7 +6,11 @@ Este é um bot simples de WhatsApp construído em Go usando a biblioteca `whatsm
 
 - Exibição de QR Code no terminal para login via WhatsApp Web.
 - Persistência de sessão usando SQLite.
-- Resposta automática ("oi") para mensagens recebidas.
+- Resposta automática inteligente:
+    - Responde com "reels" ao detectar links de Instagram Reels (`https://www.instagram.com/reel/`).
+    - Responde com "oi" para outras mensagens de texto.
+- Animação de "digitando" (`composing`) para uma interação mais humana.
+- Processamento assíncrono de mensagens para maior agilidade.
 - Registro de logs detalhados para depuração.
 
 ## Pré-requisitos
