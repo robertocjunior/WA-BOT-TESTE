@@ -31,19 +31,15 @@ A arquitetura do projeto foi desenhada para ser escalável:
 1. Instale as dependências: `go mod tidy`
 2. Execute: `go run cmd/bot/main.go`
 
-### Opção 2: Docker (Recomendado para 24/7)
-1. Construa a imagem:
-   ```bash
-   docker build -t wa-bot .
-   ```
-2. Inicie o container com persistência:
-   ```bash
-   docker run -d \
-     --name wa-bot-inst \
-     --restart unless-stopped \
-     -v $(pwd)/data:/app/data \
-     wa-bot
-   ```
+### Opção 3: Usar Imagem do GitHub Container Registry (GHCR)
+A imagem é construída e publicada automaticamente via GitHub Actions.
+```bash
+docker run -d \
+  --name wa-bot-inst \
+  --restart unless-stopped \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/robertocjunior/wa-bot-teste:latest
+```
 
 ## 🛡️ Resiliência (24/7)
 - **Panic Recovery**: O bot recupera-se automaticamente de falhas inesperadas no processamento de mensagens.
