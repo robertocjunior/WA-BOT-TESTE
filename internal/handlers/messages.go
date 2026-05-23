@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"strings"
-	"time"
 
 	"whatsapp-bot/internal/instagram"
 
@@ -127,27 +125,6 @@ func Register(client *whatsmeow.Client) whatsmeow.EventHandler {
 					}
 					return
 				}
-
-				// Basic response logic
-				_ = client.SendChatPresence(context.Background(), v.Info.Chat, types.ChatPresenceComposing, types.ChatPresenceMediaText)
-				time.Sleep(500 * time.Millisecond)
-
-				responseText := "oi"
-				msgLower := strings.ToLower(msgText)
-				if v.Message.ExtendedTextMessage != nil {
-					ext := v.Message.GetExtendedTextMessage()
-					msgLower += " " + strings.ToLower(ext.GetMatchedText()) + " " + strings.ToLower(ext.GetDescription()) + " " + strings.ToLower(ext.GetTitle())
-				}
-
-				if strings.Contains(msgLower, "instagram.com/reel/") || strings.Contains(msgLower, "instagram.com/reels/") || strings.Contains(msgLower, "instagram.com/p/") {
-					responseText = "reels: " + msgText
-				}
-
-				_, err := client.SendMessage(context.Background(), v.Info.Chat, &waE2E.Message{Conversation: proto.String(responseText)})
-				if err != nil {
-					log.Error().Err(err).Msg("Failed to send text response")
-				}
-				_ = client.SendChatPresence(context.Background(), v.Info.Chat, types.ChatPresencePaused, types.ChatPresenceMediaText)
 			}()
 		case *events.Connected:
 			log.Info().Msg("Connected to WhatsApp")
