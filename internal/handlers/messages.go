@@ -36,10 +36,6 @@ func Register(client *whatsmeow.Client) whatsmeow.EventHandler {
 	return func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
-			if v.Info.IsFromMe {
-				return
-			}
-
 			go func() {
 				// Panic recovery to keep the bot running 24/7
 				defer func() {
@@ -68,13 +64,20 @@ func Register(client *whatsmeow.Client) whatsmeow.EventHandler {
 					log.Debug().Str("sender", v.Info.Sender.String()).Msg("Empty text message received")
 				}
 
+				instaURL := instagram.ExtractURL(msgText)
+
+				// If the message is from me, only continue if it's an Instagram URL
+				// This allows the bot to respond to links sent to itself while avoiding loops
+				if v.Info.IsFromMe && instaURL == "" {
+					return
+				}
+
 				log.Info().
 					Str("sender", v.Info.Sender.String()).
 					Str("chat", v.Info.Chat.String()).
 					Str("message", msgText).
 					Msg("Message received")
 
-				instaURL := instagram.ExtractURL(msgText)
 				if instaURL != "" {
 					log.Info().Str("url", instaURL).Msg("Instagram URL detected")
 					
