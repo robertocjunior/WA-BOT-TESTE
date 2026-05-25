@@ -68,4 +68,4 @@ docker compose up -d
 
 ## 📝 Licença
 
-Este projeto está sob a licença MIT.
+Este projeto está sob a licença [MIT](https://github.com/robertocjunior/wa-Instagram-Downloader/blob/main/LICENSE).
